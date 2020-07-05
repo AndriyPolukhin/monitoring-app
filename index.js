@@ -9,9 +9,10 @@ const http = require('http');
 const url = require('url');
 // * module to get the payload
 const StringDecoder = require('string_decoder').StringDecoder;
+// * Require the current environment to use
+const config = require('./config');
 
 // ? Define what the server does
-
 // * The server should respond to all requests  with a string
 const server = http.createServer((req, res) => {
   // * 1. Get the url and parse it
@@ -39,23 +40,70 @@ const server = http.createServer((req, res) => {
     // * End the stream
     buffer += decoder.end();
 
-    // * Send the responce
-    res.end('Hello world\n');
+    // * Choose a handler this request should go to
+    // * If one is not found go to the 404 handler
+    let chosenHandler =
+      typeof router[trimmedPath] !== 'undefined'
+        ? router[trimmedPath]
+        : handlers.notFound;
 
-    // * Log the request data
-    console.log(
-      `Request is recieved on:
-    1. path: ${trimmedPath}
-    2. method: ${method}
-    3. query: ${JSON.stringify(queryStringObject)}
-    4. headers: ${JSON.stringify(headers)}
-    5. payload: ${buffer}
-    `
-    );
+    // * Construct a data object to send to the handler
+    const data = {
+      trimmedPath: trimmedPath,
+      queryStringObject: queryStringObject,
+      method: method,
+      headers: headers,
+      payload: buffer,
+    };
+
+    // * Route the request to the handler specified in the router
+    chosenHandler(data, (statusCode, payload) => {
+      // * Use the status code called back by the handler, or default to 200
+      statusCode = typeof statusCode === 'number' ? statusCode : 200;
+      // * Use the payload called back by the handler, or default to an empty object
+      payload = typeof payload === 'object' ? payload : {};
+      // * Convert the payload to a string
+      const payloadString = JSON.stringify(payload);
+      // * Return the use the Content-Type
+      res.setHeader('Content-Type', 'application/json');
+      // * Return the response
+      res.writeHead(statusCode);
+      // * Send the response payload
+      res.end(payloadString);
+
+      // * Log the request data
+      console.log(
+        `Return this response:
+          1. statusCode: ${statusCode}
+          2. payloadString: ${payloadString}
+          `
+      );
+    });
   });
 });
 
 // * Start the server, adn have it listen on a port 3000
-server.listen(3000, () => {
-  console.log(`The server is listening on port 3000 now`);
+server.listen(config.port, () => {
+  console.log(
+    `The server is listening on port: ${config.port} in ${config.envName} mode`
+  );
 });
+
+// * Define a request handler
+const handlers = {};
+
+// * Sample handler
+handlers.sample = (data, callback) => {
+  // * Callback a http status code, and a payload object
+  callback(406, { name: 'sample handler' });
+};
+
+// * Not Found handler
+handlers.notFound = (data, callback) => {
+  callback(404);
+};
+
+// * Define a request router
+const router = {
+  sample: handlers.sample,
+};
