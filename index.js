@@ -5,16 +5,40 @@
 // * Dependencies
 // * module to create a server
 const http = require('http');
+const https = require('https');
 // * module to work with the url
 const url = require('url');
 // * module to get the payload
 const StringDecoder = require('string_decoder').StringDecoder;
 // * Require the current environment to use
 const config = require('./config');
+// * Reading files from the system
+const fs = require('fs');
 
 // ? Define what the server does
-// * The server should respond to all requests  with a string
-const server = http.createServer((req, res) => {
+// * Instantiating the HTTP Server
+const httpServer = http.createServer((req, res) => unifiedServer(req, res));
+
+// * Start the server, adn have it listen on a  http port
+httpServer.listen(config.httpPort, () => {
+  console.log(`The server is listening on port: ${config.httpPort}`);
+});
+
+// * Insitantiate the HTTPS server
+const httpsServerOptions = {
+  key: fs.readFileSync('./https/key.pem'),
+  cert: fs.readFileSync('./https/cert.pem'),
+};
+const httpsServer = https.createServer(httpsServerOptions, (req, res) =>
+  unifiedServer(req, res)
+);
+
+// * Start the server, and have it listen on a https port
+httpsServer.listen(config.httpsPort, () => {
+  console.log(`The server is listening on port: ${config.httpsPort}`);
+});
+// * All the server logic for both the http and https server
+const unifiedServer = (req, res) => {
   // * 1. Get the url and parse it
   const parsedUrl = url.parse(req.url, true);
   // * 2. Get the path from the url
@@ -80,22 +104,14 @@ const server = http.createServer((req, res) => {
       );
     });
   });
-});
-
-// * Start the server, adn have it listen on a port 3000
-server.listen(config.port, () => {
-  console.log(
-    `The server is listening on port: ${config.port} in ${config.envName} mode`
-  );
-});
+};
 
 // * Define a request handler
 const handlers = {};
 
-// * Sample handler
-handlers.sample = (data, callback) => {
-  // * Callback a http status code, and a payload object
-  callback(406, { name: 'sample handler' });
+// * Ping Handler
+handlers.ping = (data, callback) => {
+  callback(200);
 };
 
 // * Not Found handler
@@ -105,5 +121,5 @@ handlers.notFound = (data, callback) => {
 
 // * Define a request router
 const router = {
-  sample: handlers.sample,
+  ping: handlers.ping,
 };
