@@ -11,9 +11,13 @@ const url = require('url');
 // * module to get the payload
 const StringDecoder = require('string_decoder').StringDecoder;
 // * Require the current environment to use
-const config = require('./config');
+const config = require('./lib/config');
 // * Reading files from the system
 const fs = require('fs');
+// * Require the handlers
+const handlers = require('./lib/handlers');
+// * Require Helpers
+const helpers = require('./lib/helpers');
 
 // ? Define what the server does
 // * Instantiating the HTTP Server
@@ -77,7 +81,7 @@ const unifiedServer = (req, res) => {
       queryStringObject: queryStringObject,
       method: method,
       headers: headers,
-      payload: buffer,
+      payload: helpers.parsedJsonToObject(buffer),
     };
 
     // * Route the request to the handler specified in the router
@@ -106,20 +110,8 @@ const unifiedServer = (req, res) => {
   });
 };
 
-// * Define a request handler
-const handlers = {};
-
-// * Ping Handler
-handlers.ping = (data, callback) => {
-  callback(200);
-};
-
-// * Not Found handler
-handlers.notFound = (data, callback) => {
-  callback(404);
-};
-
 // * Define a request router
 const router = {
   ping: handlers.ping,
+  users: handlers.users,
 };
